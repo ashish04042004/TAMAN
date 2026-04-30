@@ -13,8 +13,7 @@ data/processed/
 editions/
 
 # Model artifacts and outputs
-models/
-outputs/
+
 
 # OS/editor files
 .DS_Store
