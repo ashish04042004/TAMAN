@@ -1,0 +1,21 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Large/raw datasets
+data/raw/
+data/processed/
+editions/
+
+# Model artifacts and outputs
+models/
+outputs/
+
+# OS/editor files
+.DS_Store
+Thumbs.db
