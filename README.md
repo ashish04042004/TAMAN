@@ -55,20 +55,20 @@ python -m gdown --folder "https://drive.google.com/drive/folders/1qkHjzeYPTlJiyB
 python src/prepare_traqid_dataset.py
 python src/prepare_splits.py
 python src/train.py
-python src/evaluate.py
+python src/run_all_evaluations.py
 ```
 
-Outputs:
-- Best model: `models/best_multimodal_aqi.pt`
-- Training history: `outputs/train_history.json`
-- Test metrics: `outputs/test_metrics.json`
-- Test predictions: `outputs/test_predictions.csv`
+Outputs (see also `docs/evaluation_index.md`):
+- Best model: `models/best_multimodal_aqi_v4_resnet50.pt` (or versioned name in `src/config.py`)
+- Training history: `outputs/train_history_*.json`
+- Test metrics + predictions (structured): `outputs/eval/<version>/test_metrics.json`, `outputs/eval/<version>/test_predictions.csv`
 
 ## 6) Suggested Report Metrics
 
 - MAE
 - RMSE
-- R2 Score
+- R²
+- F1 (macro over CPCB six-class buckets from continuous AQI; see `src/metrics_eval.py`)
 
 ## 7) Next Upgrade (for extra novelty)
 

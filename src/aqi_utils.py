@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
+
 
 def _calc_sub_index(
     concentration: float,
@@ -49,6 +51,26 @@ def _pm10_sub_index(pm10: float) -> float:
     if pm10 <= 604:
         return _calc_sub_index(pm10, 505, 604, 401, 500)
     return 500.0
+
+
+def aqi_value_to_cpcb_category(aqi: float | np.ndarray) -> np.ndarray:
+    """
+    Map continuous AQI to CPCB India six classes (labels 0..5), aligned with TRAQID paper:
+    Good (0–50), Satisfactory (51–100), Moderate (101–200), Poor (201–300),
+    Very Poor (301–400), Severe (>400).
+    """
+    a = np.atleast_1d(np.asarray(aqi, dtype=float))
+    out = np.zeros(a.shape, dtype=np.int64)
+    out[(a >= 0) & (a <= 50)] = 0
+    out[(a > 50) & (a <= 100)] = 1
+    out[(a > 100) & (a <= 200)] = 2
+    out[(a > 200) & (a <= 300)] = 3
+    out[(a > 300) & (a <= 400)] = 4
+    out[a > 400] = 5
+    out[a < 0] = 0
+    if np.isscalar(aqi) and out.size == 1:
+        return int(out[0])
+    return out
 
 
 def compute_aqi_from_pollutants(pm25: float | None = None, pm10: float | None = None) -> int:

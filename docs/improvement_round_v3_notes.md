@@ -20,5 +20,5 @@ Improve regression accuracy after observing large errors in `outputs/test_predic
 
 - Model: `models/best_multimodal_aqi_v3.pt`
 - Train history: `outputs/train_history_v3.json`
-- Test metrics: `outputs/test_metrics_v3.json`
-- Test predictions: `outputs/test_predictions_v3.csv`
+- Test metrics: `outputs/eval/v3/test_metrics.json`
+- Test predictions: `outputs/eval/v3/test_predictions.csv`

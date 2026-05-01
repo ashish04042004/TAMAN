@@ -1,0 +1,103 @@
+{
+  "title": "ResNet50 (V4) vs ResNet18 (V3) negative result \u2014 quantitative hooks",
+  "test_metrics": {
+    "v3_resnet18": {
+      "mae": 46.372506146327076,
+      "rmse": 76.14068656711962,
+      "r2": 0.5455919546632837,
+      "f1_macro": 0.4346324924888667,
+      "f1_weighted": 0.5905154613274591,
+      "f1": 0.4346324924888667,
+      "checkpoint": "E:/Btech_Project/models/best_multimodal_aqi_v3.pt",
+      "model_type": "multimodal_resnet50"
+    },
+    "v4_resnet50": {
+      "mae": 48.333487634077876,
+      "rmse": 76.29042822581567,
+      "r2": 0.5438028790323846,
+      "f1_macro": 0.4039513998545204,
+      "f1_weighted": 0.5646362663678657,
+      "f1": 0.4039513998545204,
+      "checkpoint": "E:/Btech_Project/models/best_multimodal_aqi_v4_resnet50.pt",
+      "model_type": "multimodal_resnet50"
+    }
+  },
+  "test_metric_deltas_v4_minus_v3": {
+    "mae": 1.9609814877508,
+    "rmse": 0.14974165869605827,
+    "r2": -0.0017890756308991396
+  },
+  "parameter_counts": {
+    "v3_style_resnet18": {
+      "backbone": "resnet18",
+      "total_trainable_params": 11403395,
+      "image_branch_params": 11176512,
+      "head_params": 226883
+    },
+    "v4_style_resnet50": {
+      "backbone": "resnet50",
+      "total_trainable_params": 24324739,
+      "image_branch_params": 23508032,
+      "head_params": 816707
+    },
+    "total_params_ratio_resnet50_over_resnet18": 2.133113778835163
+  },
+  "train_history_sanity": {
+    "v3": {
+      "epochs": 15,
+      "unique_val_rmse_rounded_6dp": 1,
+      "looks_degenerate": true
+    },
+    "v4": {
+      "epochs": 15,
+      "unique_val_rmse_rounded_6dp": 15,
+      "looks_degenerate": false
+    }
+  },
+  "v4_last_epoch_overfitting_signal": {
+    "epoch_last": 15,
+    "train_loss_last": 514.0535546453988,
+    "val_rmse_last": 84.32029833485248,
+    "epoch_prev": 14,
+    "train_loss_prev": 556.2489896082296,
+    "val_rmse_prev": 79.20387371686448,
+    "train_loss_decreased_last_epoch": true,
+    "val_rmse_increased_last_epoch": true
+  },
+  "v4_validation_curve_tail": [
+    {
+      "epoch": 13,
+      "train_loss": 643.2127004978133,
+      "mae": 54.68754775498685,
+      "rmse": 83.9944568564578,
+      "r2": 0.43562079242199647
+    },
+    {
+      "epoch": 14,
+      "train_loss": 556.2489896082296,
+      "mae": 51.30823547051046,
+      "rmse": 79.20387371686448,
+      "r2": 0.4981630921777064
+    },
+    {
+      "epoch": 15,
+      "train_loss": 514.0535546453988,
+      "mae": 49.48348550609847,
+      "rmse": 84.32029833485248,
+      "r2": 0.43123348253808214
+    }
+  ],
+  "fusion_gate_on_validation_best_checkpoint": {
+    "split": "validation",
+    "n_batches": 281,
+    "image_gate_mean": 1.0,
+    "image_gate_std": 2.2019426069164183e-06,
+    "metadata_gate_mean": 7.40060812631782e-08,
+    "metadata_gate_std": 2.20028391595406e-06,
+    "interpretation_hint": "Gate skewed toward the image branch: metadata is down-weighted for most validation samples (check for fusion saturation / optimization dynamics)."
+  },
+  "caveats": [
+    "Saved train_history_v3.json may be degenerate (constant val metrics across epochs). Do not use it for curve-based claims until re-exported from a clean run.",
+    "V4 checkpoint on disk is the best-validation-RMSE save from training; test metrics were produced with evaluate.py loading that checkpoint."
+  ]
+}

@@ -113,6 +113,9 @@ def main():
         "mean_abs_error": float(abs_err.mean()),
         "median_abs_error": float(np.median(abs_err)),
     }
+    for k in ("f1", "f1_macro", "f1_weighted"):
+        if k in metrics:
+            summary[k] = metrics[k]
     with open(os.path.join(plot_dir, f"{version}_plot_summary.json"), "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
 

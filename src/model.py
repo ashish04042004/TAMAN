@@ -1,15 +1,21 @@
 import torch
 import torch.nn as nn
-from torchvision.models import ResNet18_Weights, resnet18
+
+from model_taman import _build_resnet_backbone
 
 
 class MultiModalRegressor(nn.Module):
-    def __init__(self, metadata_dim: int, hidden_dim: int = 256, dropout: float = 0.2):
+    def __init__(
+        self,
+        metadata_dim: int,
+        backbone: str = "resnet50",
+        hidden_dim: int = 256,
+        dropout: float = 0.2,
+    ):
         super().__init__()
-        backbone = resnet18(weights=ResNet18_Weights.DEFAULT)
-        image_dim = backbone.fc.in_features
-        backbone.fc = nn.Identity()
-        self.image_encoder = backbone
+        self.backbone_name = str(backbone).lower()
+        backbone_net, image_dim = _build_resnet_backbone(self.backbone_name)
+        self.image_encoder = backbone_net
 
         self.meta_encoder = nn.Sequential(
             nn.Linear(metadata_dim, 64),

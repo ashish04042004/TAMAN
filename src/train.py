@@ -5,17 +5,19 @@ import random
 import numpy as np
 import torch
 import torch.nn as nn
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from config import Config
 from dataset import (
     AirQualityDataset,
+    TemporalAirQualityDataset,
     compute_stats,
     get_image_transform,
 )
+from metrics_eval import regression_metrics_with_cpcb_f1
 from model import MultiModalRegressor
+from model_taman import TAMAN
 
 
 def set_seed(seed: int) -> None:
@@ -25,11 +27,15 @@ def set_seed(seed: int) -> None:
     torch.cuda.manual_seed_all(seed)
 
 
-def evaluate(model: nn.Module, loader: DataLoader, device: torch.device):
+def evaluate(model: nn.Module, loader: DataLoader, device: torch.device, use_taman: bool):
     model.eval()
     preds, targets = [], []
     with torch.no_grad():
-        for images, metadata, y in loader:
+        for batch in loader:
+            if use_taman:
+                images, metadata, y, _aux = batch
+            else:
+                images, metadata, y = batch
             images = images.to(device)
             metadata = metadata.to(device)
             y = y.to(device)
@@ -41,10 +47,7 @@ def evaluate(model: nn.Module, loader: DataLoader, device: torch.device):
             preds.extend(y_hat.cpu().numpy().tolist())
             targets.extend(y.cpu().numpy().tolist())
 
-    mae = mean_absolute_error(targets, preds)
-    rmse = mean_squared_error(targets, preds) ** 0.5
-    r2 = r2_score(targets, preds)
-    return {"mae": mae, "rmse": rmse, "r2": r2}
+    return regression_metrics_with_cpcb_f1(targets, preds)
 
 
 def weighted_huber_loss(
@@ -70,28 +73,84 @@ def main():
     cfg = Config()
     set_seed(cfg.random_seed)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if device.type != "cuda":
+        print("WARNING: CUDA not available; training on CPU will be very slow for TAMAN/CNN.")
 
     import pandas as pd
 
     train_df = pd.read_csv(cfg.train_csv)
     stats = compute_stats(train_df, cfg.metadata_columns)
 
-    train_ds = AirQualityDataset(
-        csv_path=cfg.train_csv,
-        image_root=cfg.image_root,
-        target_col=cfg.target_col,
-        transform=get_image_transform(train=True),
-        stats=stats,
-        metadata_columns=cfg.metadata_columns,
-    )
-    val_ds = AirQualityDataset(
-        csv_path=cfg.val_csv,
-        image_root=cfg.image_root,
-        target_col=cfg.target_col,
-        transform=get_image_transform(train=False),
-        stats=stats,
-        metadata_columns=cfg.metadata_columns,
-    )
+    use_taman = cfg.use_taman
+    if use_taman:
+        print(
+            f"TAMAN: backbone={cfg.taman_backbone}, seq_len={cfg.taman_seq_len}, "
+            f"device={device}, batch_size={cfg.batch_size}"
+        )
+    if use_taman:
+        train_ds = TemporalAirQualityDataset(
+            csv_path=cfg.train_csv,
+            image_root=cfg.image_root,
+            target_col=cfg.target_col,
+            transform=get_image_transform(train=True),
+            stats=stats,
+            metadata_columns=cfg.metadata_columns,
+            seq_len=cfg.taman_seq_len,
+            max_consecutive_gap=cfg.taman_max_consecutive_frame_gap,
+        )
+        val_ds = TemporalAirQualityDataset(
+            csv_path=cfg.val_csv,
+            image_root=cfg.image_root,
+            target_col=cfg.target_col,
+            transform=get_image_transform(train=False),
+            stats=stats,
+            metadata_columns=cfg.metadata_columns,
+            seq_len=cfg.taman_seq_len,
+            max_consecutive_gap=cfg.taman_max_consecutive_frame_gap,
+        )
+        model = TAMAN(
+            metadata_dim=len(cfg.metadata_columns),
+            seq_len=cfg.taman_seq_len,
+            backbone=cfg.taman_backbone,
+            lstm_hidden=cfg.taman_lstm_hidden,
+            lstm_layers=cfg.taman_lstm_layers,
+            meta_embed_dim=cfg.taman_meta_embed_dim,
+            fusion_dim=cfg.taman_fusion_dim,
+            head_hidden=cfg.taman_head_hidden,
+        ).to(device)
+        ckpt_extra = {
+            "model_type": "taman",
+            "seq_len": cfg.taman_seq_len,
+            "backbone": cfg.taman_backbone,
+            "max_consecutive_gap": cfg.taman_max_consecutive_frame_gap,
+        }
+        model_out = cfg.taman_model_output_path
+        history_out = cfg.taman_train_history_output_path
+        print(f"TAMAN windows: train={len(train_ds)}, val={len(val_ds)}")
+    else:
+        train_ds = AirQualityDataset(
+            csv_path=cfg.train_csv,
+            image_root=cfg.image_root,
+            target_col=cfg.target_col,
+            transform=get_image_transform(train=True),
+            stats=stats,
+            metadata_columns=cfg.metadata_columns,
+        )
+        val_ds = AirQualityDataset(
+            csv_path=cfg.val_csv,
+            image_root=cfg.image_root,
+            target_col=cfg.target_col,
+            transform=get_image_transform(train=False),
+            stats=stats,
+            metadata_columns=cfg.metadata_columns,
+        )
+        model = MultiModalRegressor(
+            metadata_dim=len(cfg.metadata_columns),
+            backbone=cfg.multimodal_backbone,
+        ).to(device)
+        ckpt_extra = {"model_type": "multimodal", "backbone": cfg.multimodal_backbone}
+        model_out = cfg.model_output_path
+        history_out = cfg.train_history_output_path
 
     train_loader = DataLoader(
         train_ds,
@@ -106,7 +165,13 @@ def main():
         num_workers=cfg.num_workers,
     )
 
-    model = MultiModalRegressor(metadata_dim=len(cfg.metadata_columns)).to(device)
+    if use_taman and (len(train_ds) == 0 or len(val_ds) == 0):
+        raise RuntimeError(
+            "Temporal dataset has zero valid windows. "
+            "Try increasing `taman_max_consecutive_frame_gap` in config, "
+            "or disable `use_taman` if your CSV frame ids are not ordered numerically."
+        )
+
     optimizer = torch.optim.AdamW(
         model.parameters(), lr=cfg.learning_rate, weight_decay=cfg.weight_decay
     )
@@ -123,7 +188,11 @@ def main():
     for epoch in range(cfg.epochs):
         model.train()
         running_loss = 0.0
-        for images, metadata, y in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{cfg.epochs}"):
+        for batch in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{cfg.epochs}"):
+            if use_taman:
+                images, metadata, y, _aux = batch
+            else:
+                images, metadata, y = batch
             images = images.to(device)
             metadata = metadata.to(device)
             y = y.to(device)
@@ -149,7 +218,7 @@ def main():
             optimizer.step()
             running_loss += loss.item()
 
-        val_metrics = evaluate(model, val_loader, device)
+        val_metrics = evaluate(model, val_loader, device, use_taman)
         avg_train_loss = running_loss / max(len(train_loader), 1)
         history.append(
             {
@@ -158,25 +227,25 @@ def main():
                 **val_metrics,
             }
         )
-        print(
+        tqdm.write(
             f"Epoch {epoch + 1}: train_loss={avg_train_loss:.4f}, "
             f"val_mae={val_metrics['mae']:.4f}, val_rmse={val_metrics['rmse']:.4f}, "
-            f"val_r2={val_metrics['r2']:.4f}"
+            f"val_r2={val_metrics['r2']:.4f}, "
+            f"val_f1={val_metrics['f1']:.4f}"
         )
         scheduler.step(val_metrics["rmse"])
 
         if val_metrics["rmse"] < best_rmse:
             best_rmse = val_metrics["rmse"]
-            torch.save(
-                {
-                    "model_state_dict": model.state_dict(),
-                    "metadata_mean": stats.mean.tolist(),
-                    "metadata_std": stats.std.tolist(),
-                },
-                cfg.model_output_path,
-            )
+            payload = {
+                "model_state_dict": model.state_dict(),
+                "metadata_mean": stats.mean.tolist(),
+                "metadata_std": stats.std.tolist(),
+                **ckpt_extra,
+            }
+            torch.save(payload, model_out)
 
-    with open(cfg.train_history_output_path, "w", encoding="utf-8") as f:
+    with open(history_out, "w", encoding="utf-8") as f:
         json.dump(history, f, indent=2)
 
 

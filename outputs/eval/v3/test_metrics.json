@@ -1,0 +1,10 @@
+{
+  "mae": 46.37250330353801,
+  "rmse": 76.1406869718346,
+  "r2": 0.5455919498326012,
+  "f1_macro": 0.4346324924888667,
+  "f1_weighted": 0.5905154613274591,
+  "f1": 0.4346324924888667,
+  "checkpoint": "E:/Btech_Project/models/best_multimodal_aqi_v3.pt",
+  "model_type": "multimodal_resnet50"
+}
