@@ -82,3 +82,11 @@ This file records every implementation step performed for the project:
 64. Created separate version plot folders: `outputs/plots/v1/` and `outputs/plots/v3/`.
 65. Generated complete V1 and V3 evaluation plot sets with isolated files per version.
 66. Created `AGENT_CONTEXT.md` as a handoff context file containing complete project state, decisions, artifacts, metrics, and next actions for continuity across agents.
+67. Added CPCB six-class **F1** (macro / weighted) alongside regression metrics (`src/metrics_eval.py`, `src/aqi_utils.py` with `aqi_value_to_cpcb_category`).
+68. Consolidated test outputs under `outputs/eval/<version>/`; added `src/run_all_evaluations.py` and `docs/evaluation_index.md` (table + rollup `outputs/eval/summary.json`).
+69. Implemented **TAMAN** temporal path: `src/model_taman.py`, `TemporalAirQualityDataset` and frame-id windowing in `src/dataset.py`, branches in `src/train.py` and `src/evaluate.py`, user docs in `docs/taman.md`.
+70. Trained **TAMAN–ResNet18** on GPU (10 epochs, batch 4 per `config.py`); saved `models/best_taman_r18.pt`, `outputs/train_history_taman_r18.json`, evaluation under `outputs/eval/taman_r18/`.
+71. Updated `src/run_all_evaluations.py` to include **`taman_r18`**; relaxed `src/evaluate.py` so evaluation branch follows **checkpoint `model_type`**, not a conflicting `use_taman` default when scoring multimodal checkpoints.
+72. Added presentation / onboarding docs: `docs/beginner_project_handbook.md`, `docs/study_topics_faculty_presentation.md`.
+73. Generated **TAMAN-R18 evaluation plots** with `src/plot_evaluation.py` into `outputs/plots/taman_r18/` (scatter, residuals, error histogram, training curves, distributions, `taman_r18_plot_summary.json`); documented command in `docs/taman.md`.
+74. Refreshed **`AGENT_CONTEXT.md`**, **`STEP_LOG.md`**, and **`docs/agent_conversation_log.md`** to match the above handoff state.

@@ -14,7 +14,9 @@ It is designed for a final-year BTech project with a clear novelty:
 - `src/model.py`: multimodal model with adaptive fusion gate.
 - `src/train.py`: training + validation tracking.
 - `src/evaluate.py`: test metrics and prediction export.
-- `STEP_LOG.md`: record of each implementation step.
+- `STEP_LOG.md`: numbered implementation steps.
+- `AGENT_CONTEXT.md`: current handoff (config defaults, metrics, artifact paths).
+- `docs/agent_conversation_log.md`: digest of major pipeline decisions and commands.
 
 ## 2) Dataset Strategy (Internet-available + citable ground truth)
 

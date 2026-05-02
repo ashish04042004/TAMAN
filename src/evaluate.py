@@ -14,6 +14,16 @@ from model import MultiModalRegressor
 from model_taman import TAMAN
 
 
+def _taman_last_frame_image_names(test_ds: TemporalAirQualityDataset) -> list[str]:
+    """One path per window: last timestep row (matches what the model uses for metadata/target)."""
+    names: list[str] = []
+    for i in range(len(test_ds)):
+        start = test_ds._starts[i]
+        last = test_ds.df.iloc[start + test_ds.seq_len - 1]
+        names.append(str(last["image_name"]))
+    return names
+
+
 def evaluate_checkpoint(
     cfg: Config,
     *,
@@ -135,6 +145,7 @@ def evaluate_checkpoint(
     if use_taman and len(nights) == len(targets):
         rows["is_night"] = nights
         rows["season_code"] = seasons
+        rows["image_name"] = _taman_last_frame_image_names(test_ds)
     pred_df = pd.DataFrame(rows)
     os.makedirs(os.path.dirname(pred_path) or ".", exist_ok=True)
     pred_df.to_csv(pred_path, index=False)

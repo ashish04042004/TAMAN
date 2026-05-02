@@ -1,0 +1,41 @@
+{
+  "model": "TAMAN-R18",
+  "predictions_csv": "outputs/eval/taman_r18/test_predictions.csv",
+  "abs_error_band": "5 <= |actual - predicted| <= 15",
+  "selection_note": "Four samples spread across AQI levels (low to high) from rows in that error band.",
+  "samples": [
+    {
+      "image_name": "traqid_subset/front/13191.png",
+      "ground_truth_aqi": 58.67,
+      "predicted_aqi": 67.25,
+      "abs_error": 8.59,
+      "ground_truth_int": 59,
+      "predicted_int": 67
+    },
+    {
+      "image_name": "traqid_subset/front/5039.png",
+      "ground_truth_aqi": 66.93,
+      "predicted_aqi": 72.74,
+      "abs_error": 5.81,
+      "ground_truth_int": 67,
+      "predicted_int": 73
+    },
+    {
+      "image_name": "traqid_subset/front/5421.png",
+      "ground_truth_aqi": 90.72,
+      "predicted_aqi": 105.27,
+      "abs_error": 14.54,
+      "ground_truth_int": 91,
+      "predicted_int": 105
+    },
+    {
+      "image_name": "traqid_subset/front/20912.png",
+      "ground_truth_aqi": 232.15,
+      "predicted_aqi": 239.47,
+      "abs_error": 7.32,
+      "ground_truth_int": 232,
+      "predicted_int": 239
+    }
+  ],
+  "image_root_relative_to_repo": "data/raw"
+}

@@ -313,7 +313,9 @@ python src/run_all_evaluations.py     # v3, v4, taman_r18 (+ v1 skip if mismatch
 - `docs/evaluation_index.md` — latest test metrics table.  
 - `docs/taman.md` — TAMAN-specific notes.  
 - `docs/negative_result_resnet50_analysis.md` — v3 vs v4 story.  
-- `STEP_LOG.md` — implementation timeline.  
+- `STEP_LOG.md` — implementation timeline (numbered steps; includes TAMAN, eval consolidation, plot commands).  
+- `AGENT_CONTEXT.md` — agent handoff: current config defaults, metrics table, artifact paths, next steps.  
+- `docs/agent_conversation_log.md` — digest of major decisions and commands across sessions.  
 - **`docs/study_topics_faculty_presentation.md`** — what to study before presenting (companion file).
 
 ---

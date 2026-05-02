@@ -52,7 +52,11 @@ Keep `use_taman=True` so the correct checkpoint path is used, then:
 python src/evaluate.py
 ```
 
-Predictions CSV includes `is_night` and `season_code` (last frame of each window) for slice analysis.
+Predictions CSV includes `image_name` (last frame of each window — same row used for metadata/target), `is_night`, and `season_code` for slice analysis and figure building.
+
+## Poster / 2×2 figure (example rows)
+
+Curated examples (ground truth vs predicted, **|error| between 5 and 15**): `outputs/taman_quadrant_abserr_5_to_15.json` (duplicate: `outputs/taman_quadrant_close_match_samples.json`). Regenerate by filtering `outputs/eval/taman_r18/test_predictions.csv` on `abs(target_aqi - pred_aqi)`.
 
 ## Insight summary (presentation tables)
 
