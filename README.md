@@ -1,84 +1,188 @@
-# Multimodal AQI Regression (Image + Weather Metadata)
+# TAMAN — Temporal Adaptive Multimodal AQI Network
 
-This project predicts **AQI (Air Quality Index)** using:
-- Outdoor sky/city image
-- Weather and context metadata (`humidity`, `temperature`, `wind_speed`, `pressure`, `hour`, `latitude`, `longitude`)
+**Vision-based Air Quality Index (AQI) estimation** from urban traffic scenes, combining short image sequences with environmental metadata.
 
-It is designed for a final-year BTech project with a clear novelty:
-- **Adaptive modality fusion gate** (dynamic weighting of image vs metadata per sample).
+> Resume / portfolio project · PyTorch · Multimodal deep learning · TRAQID dataset
 
-## 1) Project Structure
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
+[![PyTorch](https://img.shields.io/badge/PyTorch-2.x-ee4c2c.svg)](https://pytorch.org/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-- `src/prepare_splits.py`: prepares train/val/test CSV files.
-- `src/dataset.py`: PyTorch dataset and metadata standardization.
-- `src/model.py`: multimodal model with adaptive fusion gate.
-- `src/train.py`: training + validation tracking.
-- `src/evaluate.py`: test metrics and prediction export.
-- `STEP_LOG.md`: numbered implementation steps.
-- `AGENT_CONTEXT.md`: current handoff (config defaults, metrics, artifact paths).
-- `docs/agent_conversation_log.md`: digest of major pipeline decisions and commands.
+---
 
-## 2) Dataset Strategy (Internet-available + citable ground truth)
+## Highlights
 
-Recommended build path:
-1. Download TRAQID public dataset (ICVGIP 2024) containing outdoor traffic images + AQI/PM2.5/PM10 + weather metadata.
-2. Convert TRAQID schema into project schema using `src/prepare_traqid_dataset.py`.
-3. Build train/val/test splits using `src/prepare_splits.py`.
+| Metric (test set) | Best single-image (v3) | **TAMAN-R18** |
+|-------------------|------------------------|---------------|
+| MAE ↓ | 46.37 | **15.61** |
+| RMSE ↓ | 76.14 | **27.32** |
+| R² ↑ | 0.55 | **0.94** |
+| F1-weighted ↑ | 0.591 | **0.834** |
 
-Ground truth is AQI computed from public pollutant measurements (PM2.5/PM10) using a standard citable formula.
+- **~66% lower MAE** vs best single-image multimodal baseline (ResNet18 + metadata)
+- **~50% lower MAE** vs strongest prior TRAQID baseline (AQC-Net, MAE 31.67)
+- Controlled **negative result**: ResNet50 (v4) did **not** beat ResNet18 (v3) under the same pipeline
 
-## 3) Required Raw Data Format
+---
 
-Create `data/raw/air_quality_metadata.csv` with columns:
+## What is TAMAN?
 
-- `image_name`
-- `humidity`
-- `temperature`
-- `wind_speed`
-- `pressure`
-- `hour`
-- `latitude`
-- `longitude`
-- `pm25` and/or `pm10` (source pollutant measurements)
-- `aqi` (optional precomputed target; auto-computed if missing)
+**TAMAN** (Temporal Adaptive Multimodal AQI Network) treats AQI prediction as a **temporal multimodal** problem:
 
-For TRAQID conversion, `image_name` stores relative paths from `data/raw/` (e.g., `traqid_download/Images/1/Front/11201.jpg`).
+1. **CNN (ResNet18)** — spatial features from each frame in a short window  
+2. **LSTM** — temporal dependencies across consecutive frames  
+3. **MLP** — weather / context metadata encoding  
+4. **Sigmoid adaptive gate** — learns how much to trust vision vs metadata per sample  
+5. **Regression head** — continuous AQI (+ CPCB six-class F1 for evaluation)
 
-## 4) Setup
+```text
+[Image sequence t−3…t] → ResNet (shared) → LSTM → temporal embedding ─┐
+                                                                       ├→ sigmoid gate → fused → AQI
+[Metadata at t]         → Weather MLP      → weather embedding      ─┘
+```
+
+---
+
+## Repository structure
+
+```text
+TAMAN/
+├── src/                      # Training, models, evaluation, data prep
+│   ├── model_taman.py        # TAMAN architecture
+│   ├── model.py              # Single-image multimodal baseline
+│   ├── dataset.py            # Image + temporal window datasets
+│   ├── train.py / evaluate.py
+│   └── create_taman_workbook.py
+├── docs/                     # Design notes, evaluation index, study guide
+├── models/                   # Saved checkpoints (*.pt)
+├── outputs/                  # Metrics, plots, experiment workbook
+│   └── reports/TAMAN-Experiment-Workbook.xlsx
+├── data/                     # Local only (gitignored raw/processed)
+├── requirements.txt
+└── README.md
+```
+
+---
+
+## Results snapshot
+
+### Baselines vs TAMAN (test)
+
+| Model | MAE | RMSE | R² | F1-macro | F1-weighted |
+|-------|-----|------|-----|----------|-------------|
+| v1 (historical) | 64.53 | 93.64 | 0.27 | — | — |
+| v3 ResNet18 multimodal | 46.37 | 76.14 | 0.55 | 0.435 | 0.591 |
+| v4 ResNet50 multimodal | 48.33 | 76.29 | 0.54 | 0.404 | 0.565 |
+| **TAMAN-R18** | **15.61** | **27.32** | **0.94** | **0.653** | **0.834** |
+
+### Ablation (architecture components)
+
+| Configuration | MAE | RMSE | R² |
+|---------------|-----|------|-----|
+| CNN only | 52.84 | 81.32 | 0.49 |
+| CNN + metadata | 46.37 | 76.14 | 0.55 |
+| CNN + LSTM | 28.72 | 49.65 | 0.81 |
+| CNN + metadata + LSTM (no adaptive fusion) | 20.43 | 35.18 | 0.90 |
+| **TAMAN (full)** | **15.61** | **27.32** | **0.94** |
+
+Canonical metrics live under `outputs/eval/` and `docs/evaluation_index.md`. Experiment workbook: `outputs/reports/TAMAN-Experiment-Workbook.xlsx`.
+
+---
+
+## Quick start
 
 ```bash
+git clone https://github.com/ashish04042004/TAMAN.git
+cd TAMAN
 pip install -r requirements.txt
 ```
 
-## 5) Train + Evaluate
+### Data (TRAQID)
+
+1. Obtain the [TRAQID](https://doi.org/10.1145/3702250.3702260) dataset (ICVGIP 2024).  
+2. Build metadata + splits (example path used in this project):
 
 ```bash
-python -m gdown --folder "https://drive.google.com/drive/folders/1qkHjzeYPTlJiyBh-xCFq_fmSh0qq9UPV" -O data/raw/traqid_download
-python src/prepare_traqid_dataset.py
+python src/extract_traqid_subset.py   # or prepare_traqid_dataset.py
 python src/prepare_splits.py
-python src/train.py
-python src/run_all_evaluations.py
 ```
 
-Outputs (see also `docs/evaluation_index.md`):
-- Best model: `models/best_multimodal_aqi_v4_resnet50.pt` (or versioned name in `src/config.py`)
-- Training history: `outputs/train_history_*.json`
-- Test metrics + predictions (structured): `outputs/eval/<version>/test_metrics.json`, `outputs/eval/<version>/test_predictions.csv`
+Raw data stays under `data/raw/` / `data/processed/` (not committed).
 
-## 6) Suggested Report Metrics
+### Train / evaluate
 
-- MAE
-- RMSE
-- R²
-- F1 (macro over CPCB six-class buckets from continuous AQI; see `src/metrics_eval.py`)
+```bash
+# Default config trains TAMAN (see src/config.py: use_taman=True)
+python src/train.py
 
-## 7) Next Upgrade (for extra novelty)
+# Single-run eval (paths from config)
+python src/evaluate.py
 
-- Time-aware fusion using short timestamp history windows.
-- Self-supervised image pretraining on unlabeled sky images before regression fine-tuning.
+# All versioned evals → outputs/eval/<tag>/
+python src/run_all_evaluations.py
 
-## 8) AQI Computation
+# Plots
+python src/plot_evaluation.py --version taman_r18 \
+  --pred-path outputs/eval/taman_r18/test_predictions.csv \
+  --history-path outputs/train_history_taman_r18.json \
+  --metrics-path outputs/eval/taman_r18/test_metrics.json \
+  --plot-dir outputs/plots/taman_r18
+```
 
-AQI is computed automatically in `src/prepare_splits.py` using `src/aqi_utils.py`:
-- If `aqi` column is missing, the pipeline computes AQI from `pm25` and/or `pm10`.
-- Current implementation follows standard breakpoint interpolation (US EPA style) for PM2.5 and PM10.
+### Key config knobs (`src/config.py`)
+
+| Setting | Typical value |
+|---------|----------------|
+| `use_taman` | `True` for TAMAN, `False` for single-image multimodal |
+| `taman_seq_len` | `4` |
+| `taman_backbone` | `resnet18` |
+| `batch_size` | `4` (temporal), `8` (single-image) |
+| `epochs` | `10` (TAMAN runs in this repo) |
+| `learning_rate` | `5e-5` |
+| Metadata | humidity, temperature, hour, is_night, season_code, pm25, pm10 |
+
+---
+
+## Tech stack
+
+- **Python**, **PyTorch**, **Torchvision** (ResNet18/50)  
+- **LSTM** temporal encoder, **MLP** metadata branch, **gated fusion**  
+- **Pandas / NumPy / scikit-learn** — splits & metrics  
+- **Huber loss** (high-AQI weighting), **AdamW**, **ReduceLROnPlateau**  
+- Evaluation: MAE, RMSE, R², CPCB-bucket F1  
+
+---
+
+## Documentation
+
+| Doc | Purpose |
+|-----|---------|
+| [`docs/taman.md`](docs/taman.md) | TAMAN usage & limitations |
+| [`docs/evaluation_index.md`](docs/evaluation_index.md) | Metrics table |
+| [`docs/beginner_project_handbook.md`](docs/beginner_project_handbook.md) | Full workflow + glossary |
+| [`docs/study_topics_faculty_presentation.md`](docs/study_topics_faculty_presentation.md) | Viva / presentation checklist |
+| [`docs/negative_result_resnet50_analysis.md`](docs/negative_result_resnet50_analysis.md) | Why ResNet50 did not win |
+
+---
+
+## Dataset & citation
+
+This work builds on **TRAQID** (Traffic-Related Air Quality Image Dataset):
+
+> Kathalkar et al., *TRAQID - Traffic-Related Air Quality Image Dataset*, ICVGIP 2024.  
+> https://doi.org/10.1145/3702250.3702260
+
+Prior methods compared in the report (Mondal, Kalajdjieski, Nilesh, AQC-Net / Zhang) are cited in the project report and experiment workbook.
+
+---
+
+## Author
+
+**Ashish Singh** · IIT (ISM) Dhanbad  
+GitHub: [ashish04042004](https://github.com/ashish04042004)
+
+---
+
+## License
+
+Code in this repository is provided for academic and portfolio use. Dataset rights remain with the TRAQID authors; obtain and cite TRAQID separately.

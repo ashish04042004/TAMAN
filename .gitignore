@@ -1,20 +1,31 @@
 # Python cache
 __pycache__/
 *.py[cod]
+*.egg-info/
+.pytest_cache/
 
 # Virtual environments
 .venv/
 venv/
 env/
 
-# Large/raw datasets
+# Large/raw datasets (download TRAQID separately)
 data/raw/
 data/processed/
 editions/
 
-# Model artifacts and outputs
+# Local notebooks / IDE
+.ipynb_checkpoints/
+.idea/
+.vscode/
+*.swp
 
-
-# OS/editor files
+# OS
 .DS_Store
 Thumbs.db
+
+# Secrets
+.env
+.env.*
+*.pem
+credentials.json
